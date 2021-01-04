@@ -13,11 +13,8 @@ module.exports = {
   // 是否開啟eslint
   lintOnSave: false,
 
-  publicPath: './',
-  // publicPath: process.env.NODE_ENV === 'production' ? '/upfrd/WebAgenda/dau/' : '/',
-  // indexPath: 'index.html',
-  // publicPath: '/WebAgenda/',
-  // publicPath: process.env.NODE_ENV === 'production' ? './' : '/',
+  // publicPath: './',
+  publicPath: process.env.NODE_ENV === 'production' ? '/youtube-demo/' : '/',
   devServer: {
     open: true, // 是否自動彈出瀏覽器頁面
     // host: 'localhost',
