@@ -13,7 +13,9 @@ export default new Vuex.Store({
     // 彈跳視窗的字
     alertWord: '',
     // youtube key
-    key: 'AIzaSyAp8dsZZBZZQAizI_fnEyDC8UysIjVuS1Y'
+    // key: 'AIzaSyAp8dsZZBZZQAizI_fnEyDC8UysIjVuS1Y'
+    // key: 'AIzaSyA-EAsQWEKhAKeXIVp6HkdxMTi7tYeN5BU'
+    key: 'AIzaSyBEjwr1ysCzdqhoXchbhS2w0c5IR9wflYs'
   },
   getters: {},
   mutations: {

@@ -1,7 +1,8 @@
 <template>
   <div class="home-wrap scroll-div" @scroll="scrollEvent">
     <!-- 置頂搜尋，連至搜尋頁面 -->
-    <div class="search-wrap">
+    <div class="search-wrap row items-center">
+      <q-icon name="format_align_justify" size="sm" @click="showPageList = !showPageList" />
       <div class="search row items-center">
         <svg class="q-mr-sm" width="20" height="20" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
@@ -13,16 +14,87 @@
             fill="#c4c4c4"
           />
         </svg>
-        <input v-model="text" type="text" name="searchInput" placeholder="搜尋" @keyup.enter="sendSearch(text)" />
+        <input
+          v-model="text"
+          type="text"
+          name="searchInput"
+          :placeholder="searchType === 'video' ? '搜尋影片' : searchType === 'playlist' ? '搜尋播放清單' : '搜尋頻道'"
+          @keyup.enter="sendSearch(text)"
+        />
         <i v-if="text !== ''" class="fas fa-times-circle" @click="text = ''"></i>
       </div>
     </div>
+    <!-- 歷史紀錄 -->
     <div v-if="keywordHistory.length > 0" class="keywordHistoryList">
       <KeywordHistory :data="keywordHistory" @searchThisKeyword="searchThisKeyword" @cleanKeyword="cleanKeyword" />
     </div>
+    <!-- 搜尋後的影片列表 -->
     <div :class="[keywordHistory.length === 0 ? 'noKeywordHistoryList' : '', 'content']">
-      <VideoInfo :data="searchResultList" :keyword="text" />
+      <div v-if="searchResultList.length > 0" class="searchResultTitle">
+        搜尋
+        <span>{{ searchedKeyword }}</span>
+        相關{{ searchType === 'video' ? '影片' : searchType === 'playlist' ? '播放清單' : '頻道' }}結果
+      </div>
+      <VideoInfo :data="finalSearchResultList" :keyword="text" :type="searchType" :startToSearch="startToSearch" />
     </div>
+    <!-- 選擇搜尋類別的 btn -->
+    <q-fab class="chooseTypeButton" icon="search" v-model="chooseTypeButton" external-label label-class="bg-grey-3 text-white" color="primary" direction="up">
+      <q-fab-action
+        label-class="btnLabel text-white"
+        external-label
+        :text-color="searchType === 'channel' ? 'white' : 'primary'"
+        :color="searchType === 'channel' ? 'primary' : 'white'"
+        label-position="left"
+        label="頻道"
+        icon="face"
+        @click="searchType = 'channel'"
+      />
+      <q-fab-action
+        label-class="btnLabel text-white"
+        external-label
+        :text-color="searchType === 'playlist' ? 'white' : 'primary'"
+        :color="searchType === 'playlist' ? 'primary' : 'white'"
+        label-position="left"
+        label="播放清單"
+        icon="fact_check"
+        @click="searchType = 'playlist'"
+      />
+      <q-fab-action
+        label-class="btnLabel text-white"
+        external-label
+        :text-color="searchType === 'video' ? 'white' : 'primary'"
+        :color="searchType === 'video' ? 'primary' : 'white'"
+        label-position="left"
+        label="影片"
+        icon="movie"
+        @click="searchType = 'video'"
+      />
+    </q-fab>
+    <!-- 灰色背景 -->
+    <div v-if="chooseTypeButton" class="backgroundGray" @click="backgroundGrayHide"></div>
+    <div v-if="showPageList" class="backgroundGray allPage" @click="backgroundGrayHide"></div>
+    <!-- 頁面列表 -->
+    <transition name="moveL">
+      <div v-if="showPageList" class="pageList">
+        <q-icon class="alignIcon" name="format_align_justify" size="sm" @click="showPageList = !showPageList" />
+        <div class="list row items-center">
+          <q-icon class="q-mr-lg" name="home" size="sm" />
+          <span>首頁</span>
+        </div>
+        <div class="list row items-center">
+          <q-icon class="q-mr-lg" name="favorite" size="sm" />
+          <span>收藏影片</span>
+        </div>
+        <div class="list row items-center">
+          <q-icon class="q-mr-lg" name="fact_check" size="sm" />
+          <span>收藏播放清單</span>
+        </div>
+        <div class="list row items-center">
+          <q-icon class="q-mr-lg" name="sentiment_very_satisfied" size="sm" />
+          <span>收藏頻道</span>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -30,7 +102,7 @@
 // @ is an alias to /src
 import VideoInfo from '../components/Home/VideoInfo';
 import KeywordHistory from '../components/Home/KeywordHistory';
-import { mapState, mapActions } from 'vuex';
+import { mapState, mapActions, mapMutations } from 'vuex';
 // import router from '../router';
 export default {
   name: 'Home',
@@ -39,51 +111,100 @@ export default {
     return {
       // 搜尋的關鍵字
       text: '',
+      // 完成搜尋後的關鍵字
+      searchedKeyword: '',
       // 是否是自己打字搜尋，還是點擊搜尋紀錄
       notfromTyping: false,
       // 搜尋紀錄
-      keywordHistory: []
+      keywordHistory: [],
+      // 選擇搜尋類型的 btn 是否點開
+      chooseTypeButton: false,
+      // 搜尋的類型(channel/playlist/video)
+      searchType: 'video',
+      // 因 plalylistInfo 寫入時間有時間差，因此等 plalylistInfo 寫入後才放進 VideoInfo compponent 裡
+      finalSearchResultList: [],
+      // 第一次搜尋的 flag，或是換 searchType 搜尋
+      startToSearch: 'first',
+      // 頁面選擇列表顯示
+      showPageList: false
     };
   },
   computed: {
-    ...mapState('HomeModule', ['searchResultList', 'nextPageToken', 'apiDoing'])
+    ...mapState('HomeModule', ['searchResultList', 'nextPageToken', 'apiDoing', 'searchPage'])
   },
   watch: {
     // 判斷是否正在打字，若沒有打字後一秒才發送 api
     text: function(newData) {
       console.log('typing');
-      let self = this;
-      setTimeout(function() {
-        // 若沒在打字且內容不為空，另外也不是從"按下歷史搜尋紀錄來的"，則發送 api
-        if (newData === self.text && self.text !== '' && !self.notfromTyping) {
-          console.log('notTyping, keyword:' + self.text);
-          self.sendSearch(self.text);
-        }
-      }, 1000);
+      // 因 youtube 有限訂每日發 api 的次數，所以關閉即時搜尋功能
+      // let self = this;
+      // setTimeout(function() {
+      //   // 若沒在打字且內容不為空，另外也不是從"按下歷史搜尋紀錄來的"，則發送 api
+      //   if (newData === self.text && self.text !== '' && !self.notfromTyping) {
+      //     console.log('notTyping, keyword:' + self.text);
+      //     self.sendSearch(self.text);
+      //   }
+      // }, 1000);
+    },
+    searchResultList: function() {
+      if (this.searchType !== 'playlist') {
+        this.finalSearchResultList = this.searchResultList;
+        return;
+      }
+      setTimeout(() => {
+        this.finalSearchResultList = this.searchResultList;
+      }, 500);
+    },
+    searchType: function() {
+      // 若 type 更新，則搜尋結果要清空
+      this.SET_SEARCH_RESULT_LIST([]);
+      // 將搜尋 input 裡的值清空
+      this.cleanTextValue();
+      // 重新設定 startToSearch
+      this.startToSearch = 'changeType';
+    },
+    showPageList: function() {
+      if (!this.showPageList) {
+        return;
+      }
     }
   },
   created() {},
   methods: {
+    ...mapActions('HomeModule', ['getSearchResult']),
+    ...mapMutations('HomeModule', ['SET_SEARCH_PAGE', 'SET_SEARCH_RESULT_LIST']),
     // 滾動事件
     scrollEvent(e) {
-      if (this.apiDoing) {
+      if (this.apiDoing || this.searchResultList.length === 0) {
         return;
       }
       if (e.srcElement.scrollTop + e.srcElement.offsetHeight > e.srcElement.scrollHeight - 50) {
-        this.getSearchResult({ keyword: this.text, nextPageToken: this.nextPageToken });
+        this.getSearchResult({ keyword: this.text, nextPageToken: this.nextPageToken, type: this.searchType, page: this.searchPage + 1 });
+        // 紀錄現在正在搜尋的頁數
+        this.SET_SEARCH_PAGE(this.searchPage + 1);
       }
     },
-    ...mapActions('HomeModule', ['getSearchResult']),
     // 搜尋關鍵字的相關影片
     sendSearch(text) {
+      if (text === '') {
+        return;
+      }
+      // 搜尋過了，所以更改第一次搜尋 flag 的狀態
+      if (this.startToSearch) {
+        this.startToSearch = 'searched';
+      }
       // 若歷史訊息已存在，則移除原有的，再次寫入至第一個
       if (this.keywordHistory.indexOf(text) > -1) {
         this.keywordHistory.splice(this.keywordHistory.indexOf(text), 1);
       }
       // 寫入歷史訊息
       this.keywordHistory.unshift(text);
+      // 寫入搜尋後的關鍵字
+      this.searchedKeyword = text;
       // 搜尋影片
-      this.getSearchResult({ keyword: text });
+      this.getSearchResult({ keyword: text, type: this.searchType, page: 1 });
+      // 紀錄現在正在搜尋的頁數
+      this.SET_SEARCH_PAGE(1);
     },
     // 按下歷史搜尋紀錄，搜尋該關鍵字
     searchThisKeyword(keyword) {
@@ -99,6 +220,19 @@ export default {
     cleanKeyword(keyword) {
       const index = this.keywordHistory.indexOf(keyword);
       this.keywordHistory.splice(index, 1);
+    },
+    // 將搜尋 input 裡的值清空
+    cleanTextValue() {
+      this.text = '';
+    },
+    backgroundGrayHide() {
+      if (this.chooseTypeButton) {
+        this.chooseTypeButton = false;
+        return;
+      } else if (this.showPageList) {
+        this.showPageList = false;
+        return;
+      }
     }
   }
 };
@@ -134,7 +268,7 @@ a {
   padding: 7px 15px;
   border-radius: 25px;
   margin: 0 auto;
-  width: calc(100% - 50px);
+  width: calc(98% - 50px - 24px);
   color: $YTSeparatorLine;
   max-width: 500px;
   span {
@@ -164,10 +298,79 @@ a {
 .content {
   max-width: 700px;
   margin: 0px auto;
-  padding: 15px;
+  padding: 0px 15px 15px 15px;
 }
 .content.noKeywordHistoryList {
   margin: 67px auto 0px auto;
+}
+.searchResultTitle {
+  margin-bottom: 15px;
+  color: $YTGray8;
+  span {
+    color: $YTSecondary;
+  }
+}
+.chooseTypeButton {
+  position: fixed;
+  right: 10%;
+  bottom: 10%;
+}
+.backgroundGray {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  background: rgba(0, 0, 0, 0.4);
+}
+.backgroundGray.allPage {
+  z-index: 1001;
+}
+.q-icon {
+  color: $YTPrimary;
+  margin-left: 2%;
+  cursor: pointer;
+}
+.pageList {
+  width: 200px;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background-color: $YTWhite;
+  z-index: 1001;
+  .alignIcon {
+    padding: 16px 27px 8px 27px;
+  }
+  .list {
+    padding: 16px 27px;
+    cursor: pointer;
+  }
+  .list:hover {
+    background-color: #9bc6bd2b;
+  }
+  span {
+    color: $YTSecondaryGray;
+  }
+}
+@media screen and (min-width: 415px) {
+  .pageList {
+    width: 240px;
+  }
+}
+// 左向右進入，右向左滑出動畫
+.moveL-enter-active,
+.moveL-leave-active {
+  transition: all 0.3s linear;
+  transform: translateX(0%);
+}
+.moveL-enter,
+.moveL-leave {
+  transform: translateX(-100%);
+}
+.moveL-leave-to {
+  transform: translateX(-100%);
 }
 </style>
 <style></style>

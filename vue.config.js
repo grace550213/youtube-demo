@@ -21,19 +21,19 @@ module.exports = {
     host: '192.168.50.154',
     port: '8080',
     https: false,
-    hotOnly: false,
-    proxy: {
-      '/Memia': {
-        target: 'https://memia.lale.im', // 測試機接口域名
-        ws: true, // 代理websockets
-        secure: true, // 如果是 https 接口，需要配置這個??
-        changeOrigin: true // 虛擬的站點需要更管origin //是否跨域
-        // pathRewrite: {
-        //   //重寫路徑 比如'/api/aaa/ccc'重寫為'/aaa/ccc'
-        //   '^/api': ''
-        // }
-      }
-    }
+    hotOnly: false
+    // proxy: {
+    //   '/': {
+    //     target: '', // 測試機接口域名
+    //     ws: true, // 代理websockets
+    //     secure: true, // 如果是 https 接口，需要配置這個??
+    //     changeOrigin: true // 虛擬的站點需要更管origin //是否跨域
+    //     // pathRewrite: {
+    //     //   //重寫路徑 比如'/api/aaa/ccc'重寫為'/aaa/ccc'
+    //     //   '^/api': ''
+    //     // }
+    //   }
+    // }
   },
   css: {
     loaderOptions: {
