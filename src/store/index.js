@@ -1,6 +1,7 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 import HomeModule from './modules/Home/index';
+import FavoriteModule from './modules/Favorite/Favorite';
 // import { Loading } from 'quasar';
 // import axios from 'axios';
 
@@ -29,5 +30,5 @@ export default new Vuex.Store({
     }
   },
   actions: {},
-  modules: { HomeModule }
+  modules: { HomeModule, FavoriteModule }
 });

@@ -25,20 +25,13 @@
       </div>
     </div>
     <!-- 歷史紀錄 -->
-    <div v-if="keywordHistory.length > 0" class="keywordHistoryList">
+    <div v-if="keywordHistory.length > 0 && isHomePage()" class="keywordHistoryList">
       <KeywordHistory :data="keywordHistory" @searchThisKeyword="searchThisKeyword" @cleanKeyword="cleanKeyword" />
     </div>
-    <!-- 搜尋後的影片列表 -->
-    <div :class="[keywordHistory.length === 0 ? 'noKeywordHistoryList' : '', 'content']">
-      <div v-if="searchResultList.length > 0" class="searchResultTitle">
-        搜尋
-        <span>{{ searchedKeyword }}</span>
-        相關{{ searchType === 'video' ? '影片' : searchType === 'playlist' ? '播放清單' : '頻道' }}結果
-      </div>
-      <VideoInfo :data="finalSearchResultList" :keyword="text" :type="searchType" :startToSearch="startToSearch" />
-    </div>
+    <!-- 中間內容呈現區塊 -->
+    <router-view :keywordHistory="keywordHistory" :searchedKeyword="searchedKeyword" :searchType="searchType" :startToSearch="startToSearch"></router-view>
     <!-- 選擇搜尋類別的 btn -->
-    <q-fab class="chooseTypeButton" icon="search" v-model="chooseTypeButton" external-label label-class="bg-grey-3 text-white" color="primary" direction="up">
+    <q-fab v-if="isHomePage()" class="chooseTypeButton" icon="search" v-model="chooseTypeButton" external-label label-class="bg-grey-3 text-white" color="primary" direction="up">
       <q-fab-action
         label-class="btnLabel text-white"
         external-label
@@ -77,19 +70,19 @@
     <transition name="moveL">
       <div v-if="showPageList" class="pageList">
         <q-icon class="alignIcon" name="format_align_justify" size="sm" @click="showPageList = !showPageList" />
-        <div class="list row items-center">
+        <div class="list row items-center" @click="toHome">
           <q-icon class="q-mr-lg" name="home" size="sm" />
           <span>首頁</span>
         </div>
-        <div class="list row items-center">
+        <div class="list row items-center" @click="toFavoriteVideo">
           <q-icon class="q-mr-lg" name="favorite" size="sm" />
           <span>收藏影片</span>
         </div>
-        <div class="list row items-center">
+        <div class="list row items-center" @click="toPlaylist">
           <q-icon class="q-mr-lg" name="fact_check" size="sm" />
           <span>收藏播放清單</span>
         </div>
-        <div class="list row items-center">
+        <div class="list row items-center" @click="toChannel">
           <q-icon class="q-mr-lg" name="sentiment_very_satisfied" size="sm" />
           <span>收藏頻道</span>
         </div>
@@ -100,13 +93,12 @@
 
 <script>
 // @ is an alias to /src
-import VideoInfo from '../components/Home/VideoInfo';
 import KeywordHistory from '../components/Home/KeywordHistory';
 import { mapState, mapActions, mapMutations } from 'vuex';
-// import router from '../router';
+import router from '../router';
 export default {
   name: 'Home',
-  components: { VideoInfo, KeywordHistory },
+  components: { KeywordHistory },
   data() {
     return {
       // 搜尋的關鍵字
@@ -134,9 +126,10 @@ export default {
   },
   watch: {
     // 判斷是否正在打字，若沒有打字後一秒才發送 api
-    text: function(newData) {
-      console.log('typing');
-      // 因 youtube 有限訂每日發 api 的次數，所以關閉即時搜尋功能
+    // 因 youtube 有限訂每日發 api 的次數，所以關閉即時搜尋功能
+    text: function() {
+      // text: function(newData) {
+      // console.log('typing');
       // let self = this;
       // setTimeout(function() {
       //   // 若沒在打字且內容不為空，另外也不是從"按下歷史搜尋紀錄來的"，則發送 api
@@ -146,15 +139,6 @@ export default {
       //   }
       // }, 1000);
     },
-    searchResultList: function() {
-      if (this.searchType !== 'playlist') {
-        this.finalSearchResultList = this.searchResultList;
-        return;
-      }
-      setTimeout(() => {
-        this.finalSearchResultList = this.searchResultList;
-      }, 500);
-    },
     searchType: function() {
       // 若 type 更新，則搜尋結果要清空
       this.SET_SEARCH_RESULT_LIST([]);
@@ -162,11 +146,6 @@ export default {
       this.cleanTextValue();
       // 重新設定 startToSearch
       this.startToSearch = 'changeType';
-    },
-    showPageList: function() {
-      if (!this.showPageList) {
-        return;
-      }
     }
   },
   created() {},
@@ -175,10 +154,11 @@ export default {
     ...mapMutations('HomeModule', ['SET_SEARCH_PAGE', 'SET_SEARCH_RESULT_LIST']),
     // 滾動事件
     scrollEvent(e) {
-      if (this.apiDoing || this.searchResultList.length === 0) {
+      if (this.apiDoing || this.searchResultList.length === 0 || window.location.href.slice(-3) !== '/#/') {
         return;
       }
       if (e.srcElement.scrollTop + e.srcElement.offsetHeight > e.srcElement.scrollHeight - 50) {
+        // console.log('searcheMore');
         this.getSearchResult({ keyword: this.text, nextPageToken: this.nextPageToken, type: this.searchType, page: this.searchPage + 1 });
         // 紀錄現在正在搜尋的頁數
         this.SET_SEARCH_PAGE(this.searchPage + 1);
@@ -188,6 +168,9 @@ export default {
     sendSearch(text) {
       if (text === '') {
         return;
+      }
+      if (!this.isHomePage()) {
+        router.push('/');
       }
       // 搜尋過了，所以更改第一次搜尋 flag 的狀態
       if (this.startToSearch) {
@@ -225,6 +208,7 @@ export default {
     cleanTextValue() {
       this.text = '';
     },
+    // 灰色背景消失後，其他原本開起的按鈕或畫面也要消失
     backgroundGrayHide() {
       if (this.chooseTypeButton) {
         this.chooseTypeButton = false;
@@ -233,6 +217,30 @@ export default {
         this.showPageList = false;
         return;
       }
+    },
+    // 回首頁
+    toHome() {
+      this.backgroundGrayHide();
+      router.push('/');
+    },
+    // 至收藏影片頁面
+    toFavoriteVideo() {
+      this.backgroundGrayHide();
+      router.push('/Favorite/video');
+    },
+    // 至收藏播放清單頁面
+    toPlaylist() {
+      this.backgroundGrayHide();
+      router.push('/Favorite/playlist');
+    },
+    // 至收藏頻道頁面
+    toChannel() {
+      this.backgroundGrayHide();
+      router.push('/Favorite/channel');
+    },
+    // 判斷是不是在首頁(搜尋頁面)
+    isHomePage() {
+      return window.location.href.slice(-3) === '/#/';
     }
   }
 };
@@ -259,7 +267,7 @@ a {
 .search-wrap {
   background-color: $YTWhite;
   position: fixed;
-  z-index: 1000;
+  z-index: 10;
   width: 100%;
   padding: 10px;
 }
@@ -321,11 +329,11 @@ a {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 4;
+  z-index: 11;
   background: rgba(0, 0, 0, 0.4);
 }
 .backgroundGray.allPage {
-  z-index: 1001;
+  z-index: 1000;
 }
 .q-icon {
   color: $YTPrimary;

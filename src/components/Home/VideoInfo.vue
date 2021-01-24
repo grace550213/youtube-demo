@@ -31,13 +31,18 @@
             </div>
           </div>
         </a>
+        <q-icon class="favoriteIcon" :name="isFavorite(item.etag) ? 'favorite' : 'favorite_border'" size="sm" @click="toggleFavorite(item, isFavorite(item.etag))" />
       </div>
     </template>
     <template v-else-if="data.length === 0">
-      <!-- 沒有搜尋結果的畫面 -->
-      <div class="noArticle column items-center justify-center">
+      <div :class="[keywordHistory.length === 0 && !favorite ? 'noKeywordHistory' : '', 'noArticle column items-center justify-center']">
+        <!-- 若為收藏頁面 -->
+        <template v-if="favorite">
+          <i class="far fa-smile"></i>
+          <span class="noArticleText">你還沒有收藏的{{ type === 'video' ? '影片' : type === 'playlist' ? '播放清單' : '頻道' }}</span>
+        </template>
         <!-- 第一次進來頁面準備搜尋或是更改 search type -->
-        <template v-if="startToSearch !== 'searched'">
+        <template v-else-if="startToSearch !== 'searched'">
           <i class="far fa-smile-wink"></i>
           <span v-if="startToSearch === 'first'" class="noArticleText">
             step 1.右下角選擇搜尋類型
@@ -57,14 +62,17 @@
 </template>
 
 <script>
+import { mapMutations, mapState } from 'vuex';
 export default {
   name: 'VideoInfo',
   components: {},
-  props: ['data', 'keyword', 'type', 'startToSearch'],
+  props: ['data', 'keyword', 'type', 'startToSearch', 'keywordHistory', 'favorite'],
   data() {
     return {};
   },
-  computed: {},
+  computed: {
+    ...mapState('FavoriteModule', ['favoriteVideo', 'favoritePlaylist', 'favoriteChannel'])
+  },
   mounted() {
     // 搜尋後，關鍵字要改顏色
     if (this.keyword !== '') {
@@ -95,6 +103,9 @@ export default {
     }
   },
   methods: {
+    ...mapMutations(['CHANGE_ALERT_STATUS', 'CHANGE_ALERT_WORD']),
+    ...mapMutations('FavoriteModule', ['ADD_FAVORITE_VIDEO', 'DELETE_FAVORITE_VIDEO', 'ADD_FAVORITE_PLAYLIST', 'DELETE_FAVORITE_PLAYLIST', 'ADD_FAVORITE_CHANNEL', 'DELETE_FAVORITE_CHANNEL']),
+    // 因 playlist 的 playlistInfo 資料會較晚寫入，所以須等此資料寫入後，才可以拼出正確的網址
     updateLink(index) {
       setTimeout(() => {
         if (this.data.length === 0) {
@@ -111,6 +122,54 @@ export default {
         }
         articleWrap.setAttribute('href', value);
       }, 500);
+    },
+    // 判斷是否有加入收藏名單
+    isFavorite(etag) {
+      if (this.type === 'video') {
+        return this.favoriteVideo.filter(item => item.etag === etag).length > 0;
+      } else if (this.type === 'playlist') {
+        return this.favoritePlaylist.filter(item => item.etag === etag).length > 0;
+      } else {
+        return this.favoriteChannel.filter(item => item.etag === etag).length > 0;
+      }
+    },
+    // 收藏影片/播放清單/頻道或取消收藏
+    toggleFavorite(data, isFavorite) {
+      switch (this.type) {
+        case 'video':
+          if (isFavorite) {
+            this.DELETE_FAVORITE_VIDEO(data);
+            this.CHANGE_ALERT_STATUS(true);
+            this.CHANGE_ALERT_WORD('取消收藏影片');
+          } else {
+            this.ADD_FAVORITE_VIDEO(data);
+            this.CHANGE_ALERT_STATUS(true);
+            this.CHANGE_ALERT_WORD('成功收藏影片');
+          }
+          break;
+        case 'playlist':
+          if (isFavorite) {
+            this.DELETE_FAVORITE_PLAYLIST(data);
+            this.CHANGE_ALERT_STATUS(true);
+            this.CHANGE_ALERT_WORD('取消收藏播放清單');
+          } else {
+            this.ADD_FAVORITE_PLAYLIST(data);
+            this.CHANGE_ALERT_STATUS(true);
+            this.CHANGE_ALERT_WORD('成功收藏播放清單');
+          }
+          break;
+        case 'channel':
+          if (isFavorite) {
+            this.DELETE_FAVORITE_CHANNEL(data);
+            this.CHANGE_ALERT_STATUS(true);
+            this.CHANGE_ALERT_WORD('取消收藏頻道');
+          } else {
+            this.ADD_FAVORITE_CHANNEL(data);
+            this.CHANGE_ALERT_STATUS(true);
+            this.CHANGE_ALERT_WORD('成功收藏頻道');
+          }
+          break;
+      }
     }
   }
 };
@@ -127,6 +186,7 @@ a {
 
 .videoInfo {
   padding-bottom: 30px;
+  position: relative;
   .article-wrap {
     width: 100%;
     position: relative;
@@ -211,6 +271,16 @@ a {
     text-align: center;
     line-height: 38px;
   }
+}
+.noArticle.noKeywordHistory {
+  margin: 203px 0px;
+}
+.favoriteIcon {
+  position: absolute;
+  right: 0;
+  bottom: 28px;
+  color: $YTPrimary;
+  cursor: pointer;
 }
 </style>
 

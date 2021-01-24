@@ -14,7 +14,7 @@ export default {
     return axios
       .get(api)
       .then(async response => {
-        console.log(response);
+        // console.log(response);
         // 若不為第一頁，則把資料累加上去
         if (data.nextPageToken) {
           let oldArray = context.state.searchResultList;
