@@ -148,7 +148,10 @@ export default {
       this.startToSearch = 'changeType';
     }
   },
-  created() {},
+  created() {
+    this.keywordHistory.push('mamamoo');
+    this.sendSearch('老高');
+  },
   methods: {
     ...mapActions('HomeModule', ['getSearchResult']),
     ...mapMutations('HomeModule', ['SET_SEARCH_PAGE', 'SET_SEARCH_RESULT_LIST']),
