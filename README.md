@@ -1,24 +1,13 @@
-# lale_news
+# youtube-demo
 
-## Project setup
+## 網站功能
 ```
-npm install
-```
-
-### Compiles and hot-reloads for development
-```
-npm run serve
+可即時搜尋 youtube 上的影片、播放清單、頻道等。
 ```
 
-### Compiles and minifies for production
+## 網站特色
 ```
-npm run build
-```
-
-### Lints and fixes files
-```
-npm run lint
+1. 可將喜愛的影片、播放清單、頻道等做收藏。
+2. 紀錄查詢紀錄，一按則可重新搜尋，既方便又迅速。
 ```
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
